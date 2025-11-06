@@ -1,0 +1,87 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="download-page">
+  <div class="download-section">
+    <h2 class="page-title">Descargar Video</h2>
+    <p class="page-subtitle">YouTube · Instagram · TikTok</p>
+
+    <form method="post" action="{{ url_for('download') }}" class="download-form">
+      <div class="input-group">
+        <input 
+          id="url" 
+          name="url" 
+          type="text" 
+          placeholder="Pega la URL del video..." 
+          required
+          value="{{ url or '' }}"
+          autocomplete="off"
+          autofocus
+        >
+      </div>
+
+      <div class="quality-selector">
+        <label for="quality">Calidad:</label>
+        <select id="quality" name="quality">
+          <option value="best">Mejor disponible</option>
+          <option value="720">720p</option>
+          <option value="480">480p</option>
+          <option value="audio">Solo audio</option>
+        </select>
+      </div>
+
+      <button type="submit" class="download-btn">
+        <span>Descargar</span>
+      </button>
+    </form>
+
+    {% if platform %}
+      <div class="platform-detected">
+        <div class="platform-badge">
+          <span class="platform-icon">{{ platform.icon }}</span>
+          <span class="platform-name">{{ platform.name }}</span>
+        </div>
+      </div>
+    {% endif %}
+
+    {% if error %}
+      <div class="message error-message">
+        <span>{{ error }}</span>
+      </div>
+    {% endif %}
+
+    {% if video_info %}
+      <div class="video-preview">
+        <div class="video-info-card">
+          {% if video_info.thumbnail %}
+            <div class="video-thumbnail">
+              <img src="{{ video_info.thumbnail }}" alt="Thumbnail" loading="lazy">
+            </div>
+          {% endif %}
+          <div class="video-details">
+            <h3 class="video-title">{{ video_info.title }}</h3>
+            {% if video_info.uploader %}
+              <p class="video-uploader">{{ video_info.uploader }}</p>
+            {% endif %}
+            {% if video_info.duration_formatted %}
+              <p class="video-duration">{{ video_info.duration_formatted }}</p>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+    {% endif %}
+
+    {% if file_ready %}
+      <div class="download-success">
+        <div class="success-card">
+          <h3 class="success-title">Descarga completada</h3>
+          <p class="success-filename">{{ filename }}</p>
+          <a href="{{ url_for('serve_download', filename=filename) }}" class="download-link">
+            Descargar archivo
+          </a>
+        </div>
+      </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}
+

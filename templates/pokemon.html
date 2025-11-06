@@ -1,0 +1,115 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="pokemon-page">
+  <div class="search-section">
+    <h2 class="page-title">Pokémon</h2>
+    <form method="post" action="{{ url_for('pokemon') }}" class="search-form">
+      <div class="input-group">
+        <input 
+          id="name" 
+          name="name" 
+          type="text" 
+          placeholder="Buscar Pokémon..." 
+          required 
+          value="{{ query or '' }}"
+          autocomplete="off"
+          autofocus
+        >
+        <button type="submit" class="search-btn">
+          <span>Buscar</span>
+        </button>
+      </div>
+    </form>
+
+    {% if error %}
+      <div class="message error-message">
+        <span>{{ error }}</span>
+      </div>
+    {% endif %}
+
+    {% if suggestions %}
+      <div class="suggestions-section">
+        <p class="suggestions-label">Sugerencias:</p>
+        <div class="suggestions-list">
+          {% for suggestion in suggestions %}
+            <form method="post" action="{{ url_for('pokemon') }}" class="suggestion-form">
+              <input type="hidden" name="name" value="{{ suggestion }}">
+              <button type="submit" class="suggestion-btn">
+                {{ suggestion }}
+              </button>
+            </form>
+          {% endfor %}
+        </div>
+      </div>
+    {% endif %}
+  </div>
+
+  {% if pokemon %}
+    <div class="pokemon-results">
+      <div class="pokemon-header">
+        <h1 class="pokemon-name">{{ pokemon.name }}</h1>
+        <div class="pokemon-types">
+          {% for type in types %}
+            <span class="type-tag">{{ type }}</span>
+          {% endfor %}
+        </div>
+      </div>
+
+      <div class="pokemon-content">
+        <div class="pokemon-info">
+          <section class="info-section">
+            <h3 class="section-title">Movimientos</h3>
+            <p class="section-subtitle">{{ moves|length }} movimientos disponibles</p>
+            <div class="moves-grid">
+              {% for m in moves %}
+                <span class="move-item">{{ m }}</span>
+              {% endfor %}
+            </div>
+          </section>
+        </div>
+
+        <div class="pokemon-sprites">
+          <section class="info-section">
+            <h3 class="section-title">Sprites</h3>
+            <div class="sprites-grid">
+              {% if sprites.front_default %}
+                <div class="sprite-item">
+                  <p class="sprite-label">Frente</p>
+                  <div class="sprite-image">
+                    <img src="{{ sprites.front_default }}" alt="Frente de {{ pokemon.name }}" loading="lazy">
+                  </div>
+                </div>
+              {% endif %}
+              {% if sprites.front_shiny %}
+                <div class="sprite-item">
+                  <p class="sprite-label">Frente Shiny</p>
+                  <div class="sprite-image">
+                    <img src="{{ sprites.front_shiny }}" alt="Frente shiny de {{ pokemon.name }}" loading="lazy">
+                  </div>
+                </div>
+              {% endif %}
+              {% if sprites.back_default %}
+                <div class="sprite-item">
+                  <p class="sprite-label">Espalda</p>
+                  <div class="sprite-image">
+                    <img src="{{ sprites.back_default }}" alt="Espalda de {{ pokemon.name }}" loading="lazy">
+                  </div>
+                </div>
+              {% endif %}
+              {% if sprites.back_shiny %}
+                <div class="sprite-item">
+                  <p class="sprite-label">Espalda Shiny</p>
+                  <div class="sprite-image">
+                    <img src="{{ sprites.back_shiny }}" alt="Espalda shiny de {{ pokemon.name }}" loading="lazy">
+                  </div>
+                </div>
+              {% endif %}
+            </div>
+          </section>
+        </div>
+      </div>
+    </div>
+  {% endif %}
+</div>
+{% endblock %}
+

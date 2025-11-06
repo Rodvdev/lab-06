@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>{{ title or "Lab 06 - API" }}</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+</head>
+<body>
+  <header>
+    <h1>Lab 06 – API</h1>
+    <nav>
+      <a href="{{ url_for('pokemon') }}">Pokémon</a>
+      <a href="{{ url_for('download') }}">Descargar Video</a>
+      <a href="{{ url_for('index') }}">Inicio</a>
+    </nav>
+  </header>
+  <main>
+    {% block content %}{% endblock %}
+  </main>
+  <footer>
+    <small>Hecho con Flask · {{ year }}</small>
+  </footer>
+</body>
+</html>
+

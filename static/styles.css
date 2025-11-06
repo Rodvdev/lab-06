@@ -1,0 +1,575 @@
+:root { 
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+  --text-primary: #1a1a1a;
+  --text-secondary: #666;
+  --text-tertiary: #999;
+  --border: #e0e0e0;
+  --border-hover: #ccc;
+  --bg-primary: #ffffff;
+  --bg-secondary: #fafafa;
+  --bg-tertiary: #f5f5f5;
+}
+
+body { 
+  margin: 0; 
+  background: var(--bg-secondary); 
+  color: var(--text-primary);
+  line-height: 1.6;
+}
+
+header { 
+  background: var(--bg-primary); 
+  border-bottom: 1px solid var(--border); 
+  padding: 20px 24px;
+}
+
+h1 { 
+  margin: 0 0 12px;
+  font-size: 24px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+}
+
+nav a { 
+  margin-right: 24px; 
+  text-decoration: none; 
+  color: var(--text-primary);
+  font-weight: 500;
+  transition: opacity 0.2s;
+}
+
+nav a:hover {
+  opacity: 0.7;
+}
+
+main { 
+  padding: 40px 24px; 
+  max-width: 1200px; 
+  margin: auto;
+}
+
+footer {
+  text-align: center;
+  padding: 24px;
+  color: var(--text-tertiary);
+  border-top: 1px solid var(--border);
+  margin-top: 60px;
+}
+
+/* Form styles */
+form { 
+  background: var(--bg-primary); 
+  padding: 0;
+  border-radius: 0;
+  box-shadow: none;
+}
+
+input[type="text"], select {
+  width: 100%; 
+  padding: 14px 16px; 
+  margin: 0;
+  border: 1px solid var(--border); 
+  border-radius: 8px;
+  font-size: 16px;
+  font-family: inherit;
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+input[type="text"]:focus {
+  outline: none;
+  border-color: var(--text-primary);
+  box-shadow: 0 0 0 3px rgba(0, 0, 0, 0.05);
+}
+
+input[type="text"]::placeholder {
+  color: var(--text-tertiary);
+}
+
+button {
+  padding: 14px 24px; 
+  border: 1px solid var(--text-primary); 
+  border-radius: 8px; 
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  cursor: pointer;
+  font-size: 16px;
+  font-weight: 500;
+  font-family: inherit;
+  transition: all 0.2s;
+}
+
+button:hover {
+  background: var(--text-primary);
+  color: var(--bg-primary);
+}
+
+button:active {
+  transform: scale(0.98);
+}
+
+.grid { display: grid; gap: 24px; }
+.grid-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.card { 
+  background: var(--bg-primary); 
+  padding: 24px; 
+  border-radius: 12px; 
+  border: 1px solid var(--border);
+}
+
+img { 
+  max-width: 100%; 
+  height: auto; 
+  border-radius: 8px; 
+  background: var(--bg-tertiary);
+  display: block;
+}
+
+ul { margin: 0; padding-left: 20px; }
+.error { color: var(--text-primary); margin-top: 16px; }
+.success { color: var(--text-primary); margin-top: 16px; }
+
+/* Pokemon page specific styles */
+.pokemon-page {
+  animation: fadeIn 0.3s ease-out;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.search-section {
+  margin-bottom: 48px;
+}
+
+.page-title {
+  font-size: 32px;
+  font-weight: 600;
+  letter-spacing: -0.03em;
+  margin: 0 0 32px;
+  color: var(--text-primary);
+}
+
+.search-form {
+  margin-bottom: 24px;
+}
+
+.input-group {
+  display: flex;
+  gap: 12px;
+  max-width: 600px;
+}
+
+.input-group input {
+  flex: 1;
+}
+
+.search-btn {
+  white-space: nowrap;
+  min-width: 120px;
+}
+
+.message {
+  padding: 16px 20px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--bg-primary);
+  margin-top: 24px;
+  max-width: 600px;
+}
+
+.error-message {
+  border-color: var(--text-primary);
+}
+
+.suggestions-section {
+  margin-top: 32px;
+  max-width: 600px;
+}
+
+.suggestions-label {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  margin: 0 0 16px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.suggestions-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.suggestion-form {
+  margin: 0;
+  padding: 0;
+}
+
+.suggestion-btn {
+  padding: 8px 16px;
+  font-size: 14px;
+  border-radius: 6px;
+  text-transform: capitalize;
+  background: var(--bg-primary);
+  border: 1px solid var(--border);
+  color: var(--text-primary);
+}
+
+.suggestion-btn:hover {
+  background: var(--bg-tertiary);
+  border-color: var(--border-hover);
+  color: var(--text-primary);
+}
+
+.pokemon-results {
+  margin-top: 48px;
+  animation: fadeIn 0.4s ease-out;
+}
+
+.pokemon-header {
+  margin-bottom: 40px;
+  padding-bottom: 24px;
+  border-bottom: 1px solid var(--border);
+}
+
+.pokemon-name {
+  font-size: 48px;
+  font-weight: 600;
+  letter-spacing: -0.04em;
+  margin: 0 0 20px;
+  text-transform: capitalize;
+  color: var(--text-primary);
+}
+
+.pokemon-types {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.type-tag {
+  padding: 6px 14px;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 500;
+  text-transform: capitalize;
+  background: var(--bg-tertiary);
+  color: var(--text-primary);
+  border: 1px solid var(--border);
+  letter-spacing: 0.02em;
+}
+
+.pokemon-content {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 40px;
+}
+
+@media (max-width: 768px) {
+  .pokemon-content {
+    grid-template-columns: 1fr;
+  }
+  
+  .input-group {
+    flex-direction: column;
+  }
+  
+  .search-btn {
+    width: 100%;
+  }
+}
+
+.pokemon-info,
+.pokemon-sprites {
+  min-width: 0;
+}
+
+.info-section {
+  background: var(--bg-primary);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 32px;
+}
+
+.section-title {
+  font-size: 20px;
+  font-weight: 600;
+  margin: 0 0 8px;
+  color: var(--text-primary);
+  letter-spacing: -0.02em;
+}
+
+.section-subtitle {
+  font-size: 13px;
+  color: var(--text-tertiary);
+  margin: 0 0 24px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.moves-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 10px;
+}
+
+.move-item {
+  padding: 10px 14px;
+  border-radius: 6px;
+  font-size: 14px;
+  text-align: center;
+  text-transform: capitalize;
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border);
+  color: var(--text-primary);
+  transition: all 0.2s;
+}
+
+.move-item:hover {
+  background: var(--bg-secondary);
+  border-color: var(--border-hover);
+}
+
+.sprites-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 24px;
+}
+
+.sprite-item {
+  text-align: center;
+}
+
+.sprite-label {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  margin: 0 0 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.sprite-image {
+  background: var(--bg-tertiary);
+  border-radius: 12px;
+  padding: 20px;
+  border: 1px solid var(--border);
+  transition: all 0.2s;
+}
+
+.sprite-image:hover {
+  border-color: var(--border-hover);
+  background: var(--bg-secondary);
+}
+
+.sprite-image img {
+  width: 100%;
+  height: auto;
+  background: transparent;
+}
+
+/* Download page styles */
+.download-page {
+  animation: fadeIn 0.3s ease-out;
+}
+
+.download-section {
+  margin-bottom: 48px;
+}
+
+.page-subtitle {
+  font-size: 14px;
+  color: var(--text-secondary);
+  margin: -24px 0 32px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.download-form {
+  max-width: 600px;
+  margin-bottom: 32px;
+}
+
+.quality-selector {
+  margin: 20px 0;
+  max-width: 600px;
+}
+
+.quality-selector label {
+  display: block;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  margin-bottom: 8px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.quality-selector select {
+  width: 100%;
+  padding: 14px 16px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  font-size: 16px;
+  font-family: inherit;
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  cursor: pointer;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.quality-selector select:focus {
+  outline: none;
+  border-color: var(--text-primary);
+  box-shadow: 0 0 0 3px rgba(0, 0, 0, 0.05);
+}
+
+.download-btn {
+  width: 100%;
+  max-width: 600px;
+  margin-top: 8px;
+}
+
+.platform-detected {
+  margin: 24px 0;
+  max-width: 600px;
+}
+
+.platform-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  border-radius: 8px;
+  background: var(--bg-primary);
+  border: 1px solid var(--border);
+}
+
+.platform-icon {
+  font-size: 18px;
+}
+
+.platform-name {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-primary);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.video-preview {
+  margin: 32px 0;
+  max-width: 600px;
+  animation: fadeIn 0.4s ease-out;
+}
+
+.video-info-card {
+  background: var(--bg-primary);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.video-thumbnail {
+  width: 100%;
+  background: var(--bg-tertiary);
+  overflow: hidden;
+}
+
+.video-thumbnail img {
+  width: 100%;
+  height: auto;
+  display: block;
+  background: transparent;
+}
+
+.video-details {
+  padding: 24px;
+}
+
+.video-title {
+  font-size: 18px;
+  font-weight: 600;
+  margin: 0 0 12px;
+  color: var(--text-primary);
+  line-height: 1.4;
+}
+
+.video-uploader {
+  font-size: 14px;
+  color: var(--text-secondary);
+  margin: 0 0 8px;
+}
+
+.video-duration {
+  font-size: 13px;
+  color: var(--text-tertiary);
+  margin: 0;
+  font-family: 'Monaco', 'Menlo', monospace;
+}
+
+.download-success {
+  margin: 32px 0;
+  max-width: 600px;
+  animation: fadeIn 0.4s ease-out;
+}
+
+.success-card {
+  background: var(--bg-primary);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 32px;
+  text-align: center;
+}
+
+.success-title {
+  font-size: 20px;
+  font-weight: 600;
+  margin: 0 0 16px;
+  color: var(--text-primary);
+}
+
+.success-filename {
+  font-size: 14px;
+  color: var(--text-secondary);
+  margin: 0 0 24px;
+  word-break: break-all;
+  font-family: 'Monaco', 'Menlo', monospace;
+}
+
+.download-link {
+  display: inline-block;
+  padding: 14px 32px;
+  border: 1px solid var(--text-primary);
+  border-radius: 8px;
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  text-decoration: none;
+  font-weight: 500;
+  font-size: 16px;
+  transition: all 0.2s;
+}
+
+.download-link:hover {
+  background: var(--text-primary);
+  color: var(--bg-primary);
+}
+
+@media (max-width: 768px) {
+  .download-btn {
+    width: 100%;
+  }
+  
+  .video-info-card {
+    border-radius: 8px;
+  }
+  
+  .video-details {
+    padding: 20px;
+  }
+}
+
