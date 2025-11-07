@@ -3,9 +3,9 @@
 <div class="download-page">
   <div class="download-section">
     <h2 class="page-title">Descargar Video</h2>
-    <p class="page-subtitle">YouTube · Instagram · TikTok</p>
+    <p class="page-subtitle">YouTube · Instagram · TikTok · Facebook · Twitter/X y más</p>
 
-    <form method="post" action="{{ url_for('download') }}" class="download-form">
+    <form class="download-form">
       <div class="input-group">
         <input 
           id="url" 
@@ -13,7 +13,7 @@
           type="text" 
           placeholder="Pega la URL del video..." 
           required
-          value="{{ url or '' }}"
+          value=""
           autocomplete="off"
           autofocus
         >
@@ -23,19 +23,26 @@
         <label for="quality">Calidad:</label>
         <select id="quality" name="quality">
           <option value="best">Mejor disponible</option>
-          <option value="720">720p</option>
-          <option value="480">480p</option>
-          <option value="audio">Solo audio</option>
+          <option value="audio">Solo audio (MP3)</option>
         </select>
       </div>
 
-      <button type="submit" class="download-btn">
-        <span>Descargar</span>
+      <button type="submit" class="download-btn" id="download-btn">
+        <span id="download-btn-text">Descargar</span>
       </button>
     </form>
 
+    <!-- Plataforma detectada (mostrada dinámicamente) -->
+    <div id="platform-detected" class="platform-detected" style="display: none;">
+      <div class="platform-badge">
+        <span id="platform-icon" class="platform-icon"></span>
+        <span id="platform-name" class="platform-name"></span>
+      </div>
+    </div>
+
+    <!-- Plataforma estática (solo se muestra si no hay detección dinámica) -->
     {% if platform %}
-      <div class="platform-detected">
+      <div id="platform-static" class="platform-detected">
         <div class="platform-badge">
           <span class="platform-icon">{{ platform.icon }}</span>
           <span class="platform-name">{{ platform.name }}</span>
@@ -48,6 +55,22 @@
         <span>{{ error }}</span>
       </div>
     {% endif %}
+
+    <!-- Barra de progreso -->
+    <div id="progress-container" class="progress-container" style="display: none;">
+      <div class="progress-card">
+        <div class="progress-header">
+          <h3 class="progress-title">Descargando...</h3>
+          <span id="progress-percent" class="progress-percent">0%</span>
+        </div>
+        <div class="progress-bar-wrapper">
+          <div id="progress-bar" class="progress-bar">
+            <div id="progress-bar-fill" class="progress-bar-fill"></div>
+          </div>
+        </div>
+        <p id="progress-message" class="progress-message">Iniciando descarga...</p>
+      </div>
+    </div>
 
     {% if video_info %}
       <div class="video-preview">
@@ -70,6 +93,20 @@
       </div>
     {% endif %}
 
+    <!-- Resultado de descarga (mostrado dinámicamente) -->
+    <div id="download-result" style="display: none;"></div>
+
+    <!-- Lista de descargas disponibles -->
+    <div id="downloads-list-section" class="downloads-list-section">
+      <div class="downloads-header">
+        <h3 class="downloads-title">Descargas Disponibles</h3>
+        <button id="refresh-downloads" class="refresh-btn">🔄 Actualizar</button>
+      </div>
+      <div id="downloads-list" class="downloads-list">
+        <p class="loading-text">Cargando...</p>
+      </div>
+    </div>
+
     {% if file_ready %}
       <div class="download-success">
         <div class="success-card">
@@ -83,5 +120,408 @@
     {% endif %}
   </div>
 </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  const form = document.querySelector('.download-form');
+  const urlInput = document.getElementById('url');
+  const downloadBtn = document.getElementById('download-btn');
+  const downloadBtnText = document.getElementById('download-btn-text');
+  const progressContainer = document.getElementById('progress-container');
+  const progressBarFill = document.getElementById('progress-bar-fill');
+  const progressPercent = document.getElementById('progress-percent');
+  const progressMessage = document.getElementById('progress-message');
+  const downloadResult = document.getElementById('download-result');
+  const platformDetected = document.getElementById('platform-detected');
+  const platformStatic = document.getElementById('platform-static');
+  const platformIcon = document.getElementById('platform-icon');
+  const platformName = document.getElementById('platform-name');
+  
+  let progressInterval = null;
+  let currentTaskId = null;
+  let detectTimeout = null;
+
+  // Función para ocultar ambos badges de plataforma
+  function hidePlatformBadges() {
+    if (platformDetected) platformDetected.style.display = 'none';
+    if (platformStatic) platformStatic.style.display = 'none';
+  }
+
+  // Función para mostrar el badge dinámico
+  function showPlatformBadge(icon, name) {
+    if (platformDetected && platformIcon && platformName) {
+      platformIcon.textContent = icon;
+      platformName.textContent = name;
+      platformDetected.style.display = 'block';
+      // Ocultar el badge estático si existe
+      if (platformStatic) platformStatic.style.display = 'none';
+    }
+  }
+
+  // Función para actualizar el selector de calidad con formatos disponibles
+  function updateQualitySelector(formats) {
+    const qualitySelect = document.getElementById('quality');
+    if (!qualitySelect) return;
+    
+    // Guardar el valor actual
+    const currentValue = qualitySelect.value;
+    
+    // Limpiar opciones existentes
+    qualitySelect.innerHTML = '';
+    
+    // Agregar formatos disponibles
+    formats.forEach(format => {
+      const option = document.createElement('option');
+      option.value = format.value;
+      option.textContent = format.label;
+      qualitySelect.appendChild(option);
+    });
+    
+    // Restaurar el valor anterior si existe, sino usar 'best'
+    if (currentValue && Array.from(qualitySelect.options).some(opt => opt.value === currentValue)) {
+      qualitySelect.value = currentValue;
+    } else {
+      qualitySelect.value = 'best';
+    }
+  }
+
+  // Detectar plataforma y obtener formatos automáticamente al pegar o escribir URL
+  urlInput.addEventListener('input', function() {
+    const url = urlInput.value.trim();
+    
+    // Limpiar timeout anterior
+    if (detectTimeout) {
+      clearTimeout(detectTimeout);
+    }
+    
+    // Si la URL está vacía, ocultar badges y restaurar selector por defecto
+    if (!url) {
+      hidePlatformBadges();
+      // Restaurar selector por defecto
+      const qualitySelect = document.getElementById('quality');
+      if (qualitySelect) {
+        qualitySelect.innerHTML = `
+          <option value="best">Mejor disponible</option>
+          <option value="audio">Solo audio (MP3)</option>
+        `;
+      }
+      return;
+    }
+    
+    // Esperar un momento después de que el usuario termine de escribir/pegar
+    detectTimeout = setTimeout(async () => {
+      if (url && url.startsWith('http')) {
+        try {
+          // Obtener plataforma y formatos en paralelo
+          const [platformResponse, formatsResponse] = await Promise.all([
+            fetch('/api/detect-platform', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ url: url })
+            }),
+            fetch('/api/formats/list', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ url: url })
+            })
+          ]);
+          
+          // Mostrar plataforma
+          if (platformResponse.ok) {
+            const platform = await platformResponse.json();
+            showPlatformBadge(platform.icon, platform.name);
+          } else {
+            hidePlatformBadges();
+          }
+          
+          // Actualizar selector de calidad con formatos disponibles
+          if (formatsResponse.ok) {
+            const formatsData = await formatsResponse.json();
+            if (formatsData.formats && formatsData.formats.length > 0) {
+              updateQualitySelector(formatsData.formats);
+            }
+          }
+        } catch (error) {
+          // Silenciar errores de detección
+          hidePlatformBadges();
+        }
+      } else {
+        hidePlatformBadges();
+      }
+    }, 800); // Esperar 800ms después de que el usuario deje de escribir (más tiempo para obtener formatos)
+  });
+
+  form.addEventListener('submit', async function(e) {
+    e.preventDefault();
+    
+    const url = document.getElementById('url').value.trim();
+    const quality = document.getElementById('quality').value;
+    
+    if (!url) {
+      alert('Por favor, ingresa una URL');
+      return;
+    }
+
+    // Ocultar resultados anteriores
+    downloadResult.style.display = 'none';
+    downloadResult.innerHTML = '';
+    
+    // Deshabilitar botón y mostrar estado de carga
+    downloadBtn.disabled = true;
+    downloadBtnText.textContent = 'Iniciando...';
+    
+    // Mostrar barra de progreso
+    progressContainer.style.display = 'block';
+    progressBarFill.style.width = '0%';
+    progressPercent.textContent = '0%';
+    progressMessage.textContent = 'Iniciando descarga...';
+
+    try {
+      // Iniciar descarga
+      const response = await fetch('/api/download/start', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ url, quality })
+      });
+
+      const data = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(data.error || 'Error al iniciar la descarga');
+      }
+
+      currentTaskId = data.task_id;
+      
+      // Iniciar polling del progreso
+      progressInterval = setInterval(checkProgress, 500);
+      checkProgress(); // Primera verificación inmediata
+      
+    } catch (error) {
+      console.error('Error al iniciar descarga:', error);
+      progressMessage.textContent = 'Error: ' + error.message;
+      progressBarFill.style.backgroundColor = '#ff4444';
+      
+      // Rehabilitar botón
+      downloadBtn.disabled = false;
+      downloadBtnText.textContent = 'Descargar';
+      
+      // Mostrar error en el resultado
+      showDownloadResult({ error: error.message });
+      
+      setTimeout(() => {
+        progressContainer.style.display = 'none';
+      }, 5000);
+    }
+  });
+
+  async function checkProgress() {
+    if (!currentTaskId) return;
+
+    try {
+      const response = await fetch(`/api/download/progress/${currentTaskId}`);
+      const progress = await response.json();
+
+      if (!response.ok) {
+        throw new Error(progress.error || 'Error al obtener progreso');
+      }
+
+      // Actualizar barra de progreso
+      const percent = Math.round(progress.percent || 0);
+      progressBarFill.style.width = percent + '%';
+      progressPercent.textContent = percent + '%';
+      progressMessage.textContent = progress.message || 'Descargando...';
+
+      // Manejar diferentes estados
+      if (progress.status === 'starting') {
+        progressBarFill.style.backgroundColor = '#4CAF50';
+      } else if (progress.status === 'downloading') {
+        progressBarFill.style.backgroundColor = '#2196F3';
+      } else if (progress.status === 'processing') {
+        progressBarFill.style.backgroundColor = '#FF9800';
+      }
+
+      // Manejar estados finales
+      if (progress.status === 'completed') {
+        clearInterval(progressInterval);
+        progressBarFill.style.width = '100%';
+        progressPercent.textContent = '100%';
+        progressMessage.textContent = 'Descarga completada';
+        progressBarFill.style.backgroundColor = '#4CAF50';
+        
+        // Rehabilitar botón
+        downloadBtn.disabled = false;
+        downloadBtnText.textContent = 'Descargar';
+        
+        // Mostrar resultado
+        if (progress.result) {
+          showDownloadResult(progress.result);
+        }
+        
+        // Ocultar progreso después de 2 segundos
+        setTimeout(() => {
+          progressContainer.style.display = 'none';
+        }, 2000);
+      } else if (progress.status === 'error') {
+        clearInterval(progressInterval);
+        progressMessage.textContent = 'Error: ' + progress.message;
+        progressBarFill.style.backgroundColor = '#ff4444';
+        
+        // Rehabilitar botón
+        downloadBtn.disabled = false;
+        downloadBtnText.textContent = 'Descargar';
+        
+        // Mostrar error en resultado también
+        if (progress.result && progress.result.error) {
+          showDownloadResult(progress.result);
+        }
+        
+        setTimeout(() => {
+          progressContainer.style.display = 'none';
+        }, 5000);
+      }
+    } catch (error) {
+      console.error('Error checking progress:', error);
+      // Si hay un error al obtener el progreso, detener el polling
+      if (progressInterval) {
+        clearInterval(progressInterval);
+        progressInterval = null;
+      }
+      progressMessage.textContent = 'Error al obtener progreso: ' + error.message;
+      progressBarFill.style.backgroundColor = '#ff4444';
+      
+      // Rehabilitar botón
+      downloadBtn.disabled = false;
+      downloadBtnText.textContent = 'Descargar';
+    }
+  }
+
+  function showDownloadResult(result) {
+    let html = '';
+    
+    if (result.error) {
+      html = `
+        <div class="message error-message">
+          <span>Error: ${result.error}</span>
+        </div>
+      `;
+    } else {
+      html = `
+        <div class="download-success">
+          <div class="success-card">
+            <h3 class="success-title">Descarga completada</h3>
+            <p class="success-filename">${result.filename || 'Archivo descargado'}</p>
+            <a href="/downloads/${result.filename}" class="download-link">
+              Descargar archivo
+            </a>
+          </div>
+        </div>
+      `;
+      
+      // Mostrar información del video si está disponible
+      if (result.video_info) {
+        const videoInfo = result.video_info;
+        let videoHtml = `
+          <div class="video-preview">
+            <div class="video-info-card">
+        `;
+        
+        if (videoInfo.thumbnail) {
+          videoHtml += `
+            <div class="video-thumbnail">
+              <img src="${videoInfo.thumbnail}" alt="Thumbnail" loading="lazy">
+            </div>
+          `;
+        }
+        
+        videoHtml += `
+          <div class="video-details">
+            <h3 class="video-title">${videoInfo.title || 'Sin título'}</h3>
+        `;
+        
+        if (videoInfo.uploader) {
+          videoHtml += `<p class="video-uploader">${videoInfo.uploader}</p>`;
+        }
+        
+        if (videoInfo.duration_formatted) {
+          videoHtml += `<p class="video-duration">${videoInfo.duration_formatted}</p>`;
+        }
+        
+        videoHtml += `
+          </div>
+        </div>
+      </div>
+        `;
+        
+        html = videoHtml + html;
+      }
+      
+      // Mostrar badge de plataforma si está disponible
+      if (result.platform) {
+        html = `
+          <div class="platform-detected">
+            <div class="platform-badge">
+              <span class="platform-icon">${result.platform.icon}</span>
+              <span class="platform-name">${result.platform.name}</span>
+            </div>
+          </div>
+        ` + html;
+      }
+    }
+    
+    downloadResult.innerHTML = html;
+    downloadResult.style.display = 'block';
+    
+    // Actualizar lista de descargas después de completar
+    loadDownloadsList();
+  }
+
+  // Cargar lista de descargas
+  async function loadDownloadsList() {
+    const downloadsList = document.getElementById('downloads-list');
+    
+    try {
+      const response = await fetch('/api/downloads/list');
+      const data = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(data.error || 'Error al cargar descargas');
+      }
+      
+      if (data.downloads && data.downloads.length > 0) {
+        let html = '';
+        data.downloads.forEach(download => {
+          html += `
+            <div class="download-item">
+              <div class="download-item-info">
+                <h4 class="download-item-name">${download.filename}</h4>
+                <div class="download-item-meta">
+                  <span class="download-item-size">${download.size_mb} MB</span>
+                  <span class="download-item-date">${download.modified_readable}</span>
+                </div>
+              </div>
+              <a href="${download.url}" class="download-item-link" download>
+                ⬇️ Descargar
+              </a>
+            </div>
+          `;
+        });
+        downloadsList.innerHTML = html;
+      } else {
+        downloadsList.innerHTML = '<p class="empty-message">No hay descargas disponibles</p>';
+      }
+    } catch (error) {
+      downloadsList.innerHTML = `<p class="error-message">Error: ${error.message}</p>`;
+    }
+  }
+
+  // Botón de actualizar
+  document.getElementById('refresh-downloads').addEventListener('click', loadDownloadsList);
+  
+  // Cargar lista al iniciar
+  loadDownloadsList();
+});
+</script>
 {% endblock %}
 

@@ -559,6 +559,225 @@ ul { margin: 0; padding-left: 20px; }
   color: var(--bg-primary);
 }
 
+/* Progress bar styles */
+.progress-container {
+  margin: 32px 0;
+  max-width: 600px;
+  animation: fadeIn 0.3s ease-out;
+}
+
+.progress-card {
+  background: var(--bg-primary);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 32px;
+}
+
+.progress-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.progress-title {
+  font-size: 18px;
+  font-weight: 600;
+  margin: 0;
+  color: var(--text-primary);
+}
+
+.progress-percent {
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--text-primary);
+  font-family: 'Monaco', 'Menlo', monospace;
+}
+
+.progress-bar-wrapper {
+  margin-bottom: 16px;
+}
+
+.progress-bar {
+  width: 100%;
+  height: 8px;
+  background: var(--bg-tertiary);
+  border-radius: 4px;
+  overflow: hidden;
+  position: relative;
+}
+
+.progress-bar-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--text-primary), var(--text-secondary));
+  border-radius: 4px;
+  transition: width 0.3s ease-out;
+  width: 0%;
+  position: relative;
+  overflow: hidden;
+}
+
+.progress-bar-fill::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  right: 0;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.3),
+    transparent
+  );
+  animation: shimmer 1.5s infinite;
+}
+
+@keyframes shimmer {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+.progress-message {
+  font-size: 14px;
+  color: var(--text-secondary);
+  margin: 0;
+  text-align: center;
+}
+
+/* Downloads list styles */
+.downloads-list-section {
+  margin: 48px 0;
+  max-width: 600px;
+  animation: fadeIn 0.4s ease-out;
+}
+
+.downloads-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.downloads-title {
+  font-size: 20px;
+  font-weight: 600;
+  margin: 0;
+  color: var(--text-primary);
+}
+
+.refresh-btn {
+  padding: 8px 16px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+  transition: all 0.2s;
+}
+
+.refresh-btn:hover {
+  background: var(--bg-tertiary);
+  border-color: var(--border-hover);
+}
+
+.downloads-list {
+  background: var(--bg-primary);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 16px;
+  max-height: 500px;
+  overflow-y: auto;
+}
+
+.download-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px;
+  border-bottom: 1px solid var(--border);
+  transition: background 0.2s;
+}
+
+.download-item:last-child {
+  border-bottom: none;
+}
+
+.download-item:hover {
+  background: var(--bg-secondary);
+}
+
+.download-item-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.download-item-name {
+  font-size: 14px;
+  font-weight: 500;
+  margin: 0 0 8px;
+  color: var(--text-primary);
+  word-break: break-all;
+  line-height: 1.4;
+}
+
+.download-item-meta {
+  display: flex;
+  gap: 16px;
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.download-item-size {
+  font-weight: 500;
+}
+
+.download-item-date {
+  font-family: 'Monaco', 'Menlo', monospace;
+}
+
+.download-item-link {
+  padding: 8px 16px;
+  border: 1px solid var(--text-primary);
+  border-radius: 6px;
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  text-decoration: none;
+  font-size: 13px;
+  font-weight: 500;
+  white-space: nowrap;
+  transition: all 0.2s;
+  margin-left: 16px;
+}
+
+.download-item-link:hover {
+  background: var(--text-primary);
+  color: var(--bg-primary);
+}
+
+.loading-text,
+.empty-message {
+  text-align: center;
+  padding: 32px;
+  color: var(--text-secondary);
+  font-size: 14px;
+  margin: 0;
+}
+
+.error-message {
+  text-align: center;
+  padding: 32px;
+  color: #ff4444;
+  font-size: 14px;
+  margin: 0;
+}
+
 @media (max-width: 768px) {
   .download-btn {
     width: 100%;
@@ -570,6 +789,36 @@ ul { margin: 0; padding-left: 20px; }
   
   .video-details {
     padding: 20px;
+  }
+  
+  .progress-card {
+    padding: 24px;
+  }
+  
+  .progress-title {
+    font-size: 16px;
+  }
+  
+  .progress-percent {
+    font-size: 16px;
+  }
+  
+  .downloads-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+  }
+  
+  .download-item {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+  }
+  
+  .download-item-link {
+    margin-left: 0;
+    width: 100%;
+    text-align: center;
   }
 }
 

@@ -1,4 +1,14 @@
-Flask==3.0.3
-requests==2.32.3
-yt-dlp==2025.1.15
+# Requiere Python 3.10 o superior
+# Instalar con: pip install -r requirements.txt
 
+# Framework web
+Flask>=3.0.3,<4.0.0
+
+# Cliente HTTP
+requests>=2.32.3,<3.0.0
+
+# Compatibilidad de urllib3
+urllib3>=2.0.0,<3.0.0
+
+# Descarga de videos (con todas las dependencias opcionales)
+yt-dlp[default]>=2025.10.14
