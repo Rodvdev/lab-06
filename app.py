@@ -15,6 +15,7 @@ import random
 import traceback
 import warnings
 import logging
+import subprocess
 from datetime import datetime
 from yt_dlp import YoutubeDL
 from difflib import get_close_matches
@@ -299,7 +300,7 @@ def pokemon():
 # Pregunta 2: Descarga video
 # -----------------------
 
-def download_video_task(task_id: str, url: str, quality: str):
+def download_video_task(task_id: str, url: str, quality: str, start_time: float = None, end_time: float = None):
     """Función que ejecuta la descarga de video en un hilo separado"""
     try:
         # Actualizar estado inicial
@@ -325,20 +326,46 @@ def download_video_task(task_id: str, url: str, quality: str):
         }
         
         # Determinar formato según calidad solicitada
+        postprocessors = []
+        
         if quality == "audio":
             download_opts['format'] = 'bestaudio/best'
-            download_opts['postprocessors'] = [{
+            postprocessors.append({
                 'key': 'FFmpegExtractAudio',
                 'preferredcodec': 'mp3',
                 'preferredquality': '192',
-            }]
+            })
         elif quality.startswith("height_"):
             # Extraer altura (ej: "height_720" -> 720)
             height = int(quality.replace("height_", ""))
-            download_opts['format'] = f'bestvideo[height<={height}]+bestaudio/best[height<={height}]'
+            # Para formatos específicos de altura, usar bestvideo+bestaudio para combinar
+            # Usar height>= para encontrar el mejor formato disponible desde esa altura hacia arriba
+            # Si no hay formato exacto, buscar el más cercano disponible
+            # Esto es especialmente importante para 4K donde video y audio están separados
+            download_opts['format'] = f'bestvideo[height>={height}]+bestaudio/best[height>={height}]/bestvideo[height<={height}]+bestaudio/best[height<={height}]/best'
         else:
             # "best" o cualquier otro valor usa mejor calidad disponible
             download_opts['format'] = 'best'
+        
+        # Agregar postprocessor para recortar video si se especifican tiempos
+        if start_time is not None and end_time is not None and start_time < end_time:
+            # Calcular duración del recorte
+            trim_duration = end_time - start_time
+            
+            # Determinar qué tipo de postprocessor usar según el formato
+            if quality == "audio":
+                # Para audio, usar preprocessor_args en FFmpegExtractAudio
+                if postprocessors:
+                    # Modificar el postprocessor existente para incluir recorte
+                    postprocessors[0]['preprocessor_args'] = [
+                        '-ss', str(start_time),
+                        '-t', str(trim_duration)
+                    ]
+            # Para video, recortaremos después de la descarga usando ffmpeg directamente
+        
+        # Asignar postprocessors si hay alguno
+        if postprocessors:
+            download_opts['postprocessors'] = postprocessors
         
         if is_youtube:
             # Usar múltiples clientes en orden de preferencia para evitar 403
@@ -426,7 +453,7 @@ def download_video_task(task_id: str, url: str, quality: str):
         last_error = None
         
         # Intentar descarga con diferentes estrategias si falla
-        for attempt in range(2):
+        for attempt in range(3):  # Aumentar a 3 intentos para manejar mejor los 403
             try:
                 with YoutubeDL(download_opts) as ydl:
                     ydl.download([clean_url])
@@ -442,22 +469,46 @@ def download_video_task(task_id: str, url: str, quality: str):
                 last_error = download_error
                 error_str = str(download_error).lower()
                 
-                # Si es error 403 y es YouTube, intentar con cliente diferente
-                if ("403" in error_str or "forbidden" in error_str) and is_youtube and attempt == 0:
-                    # Cambiar a cliente web como último recurso
-                    download_opts['extractor_args'] = {
-                        'youtube': {
-                            'player_client': ['web'],
+                # Si es error 403, intentar con diferentes estrategias
+                if ("403" in error_str or "forbidden" in error_str) and is_youtube:
+                    if attempt == 0:
+                        # Primer intento: cambiar a cliente web
+                        download_opts['extractor_args'] = {
+                            'youtube': {
+                                'player_client': ['web'],
+                            }
                         }
-                    }
-                    download_progress[task_id] = {
-                        "status": "downloading",
-                        "percent": 10,
-                        "message": "Reintentando con configuración alternativa..."
-                    }
-                    continue
+                        download_progress[task_id] = {
+                            "status": "downloading",
+                            "percent": 10,
+                            "message": "Reintentando con cliente web..."
+                        }
+                        continue
+                    elif attempt == 1:
+                        # Segundo intento: usar formato más flexible para evitar restricciones
+                        if quality.startswith("height_"):
+                            height = int(quality.replace("height_", ""))
+                            # Intentar con formato más permisivo que combine mejor
+                            download_opts['format'] = f'bestvideo[height<={height}]+bestaudio/best[height<={height}]/best'
+                        download_opts['extractor_args'] = {
+                            'youtube': {
+                                'player_client': ['android', 'tv'],
+                            }
+                        }
+                        download_progress[task_id] = {
+                            "status": "downloading",
+                            "percent": 20,
+                            "message": "Reintentando con formato alternativo..."
+                        }
+                        continue
+                    else:
+                        # Si todos los intentos fallan, lanzar error específico para 4K
+                        if quality.startswith("height_2160") or (quality.startswith("height_") and int(quality.replace("height_", "")) >= 2160):
+                            raise Exception("Error 403: YouTube está bloqueando la descarga en 4K. Esto puede deberse a restricciones de la plataforma. Intenta descargar en una calidad menor (1440p o 1080p) o más tarde.")
+                        else:
+                            raise Exception("Error 403: Acceso denegado. El servidor bloqueó la descarga. Esto puede deberse a restricciones de la plataforma. Intenta más tarde o con otro video.")
                 else:
-                    # Si no es 403 o ya intentamos, lanzar el error
+                    # Si no es 403 o ya intentamos todo, lanzar el error
                     raise download_error
         
         if not download_success:
@@ -474,6 +525,70 @@ def download_video_task(task_id: str, url: str, quality: str):
             filename = downloaded_files[0]
         else:
             raise Exception("No se encontró el archivo descargado")
+        
+        # Recortar video si se especificaron tiempos (solo para video, no audio)
+        if start_time is not None and end_time is not None and start_time < end_time and quality != "audio":
+            temp_path = None
+            try:
+                file_path = os.path.join(DOWNLOAD_DIR, filename)
+                trim_duration = end_time - start_time
+                
+                # Crear nombre de archivo temporal para el recorte
+                base_name, ext = os.path.splitext(filename)
+                temp_filename = f"{base_name}_trimmed{ext}"
+                temp_path = os.path.join(DOWNLOAD_DIR, temp_filename)
+                
+                # Actualizar progreso
+                download_progress[task_id] = {
+                    "status": "processing",
+                    "percent": 90,
+                    "message": "Recortando video..."
+                }
+                
+                # Ejecutar ffmpeg para recortar el video
+                # Usar -ss para inicio, -t para duración, y -c copy para evitar re-encoding
+                ffmpeg_cmd = [
+                    'ffmpeg',
+                    '-i', file_path,
+                    '-ss', str(start_time),
+                    '-t', str(trim_duration),
+                    '-c', 'copy',  # Copiar streams sin re-encoding
+                    '-avoid_negative_ts', 'make_zero',  # Evitar timestamps negativos
+                    '-y',  # Sobrescribir archivo de salida si existe
+                    temp_path
+                ]
+                
+                result = subprocess.run(
+                    ffmpeg_cmd,
+                    capture_output=True,
+                    text=True,
+                    timeout=300  # Timeout de 5 minutos
+                )
+                
+                if result.returncode == 0:
+                    # Reemplazar el archivo original con el recortado
+                    os.replace(temp_path, file_path)
+                    download_progress[task_id] = {
+                        "status": "processing",
+                        "percent": 95,
+                        "message": "Recorte completado"
+                    }
+                else:
+                    # Si falla el recorte, mantener el archivo original
+                    if temp_path and os.path.exists(temp_path):
+                        os.remove(temp_path)
+                    print(f"Warning: No se pudo recortar el video: {result.stderr}")
+                    # Continuar con el archivo original
+            except subprocess.TimeoutExpired:
+                # Si el timeout expira, mantener el archivo original
+                if temp_path and os.path.exists(temp_path):
+                    os.remove(temp_path)
+                print("Warning: Timeout al recortar el video, usando archivo completo")
+            except Exception as trim_error:
+                # Si hay cualquier error, mantener el archivo original
+                if temp_path and os.path.exists(temp_path):
+                    os.remove(temp_path)
+                print(f"Warning: Error al recortar el video: {trim_error}")
         
         # Actualizar estado final
         download_progress[task_id] = {
@@ -583,10 +698,11 @@ def api_list_formats():
         }
         
         if is_youtube:
-            # Usar clientes que no requieren PO Token para listar formatos
+            # Usar clientes que pueden acceder a formatos de alta calidad incluyendo 4K
+            # android y tv suelen tener mejor acceso a formatos de alta calidad
             list_opts['extractor_args'] = {
                 'youtube': {
-                    'player_client': ['tv', 'android', 'web'],  # tv y android no requieren PO Token
+                    'player_client': ['android', 'tv', 'web'],  # android y tv para mejor acceso a 4K
                 }
             }
         
@@ -637,6 +753,8 @@ def api_list_formats():
                             ],
                             'available_heights': [],
                             'platform': detect_platform(url),
+                            'duration': 0,
+                            'duration_formatted': '',
                             'warning': 'No se pudieron obtener los formatos específicos. Usa "Mejor disponible" para descargar.'
                         }), 200
                 else:
@@ -673,28 +791,60 @@ def api_list_formats():
         # Agrupar por altura y extraer información
         for fmt in formats:
             height = fmt.get('height')
-            if height and isinstance(height, (int, float)):
+            
+            # También intentar obtener altura de format_note si height no está disponible
+            if not height or height == 0:
+                format_note = fmt.get('format_note', '').lower()
+                # Buscar patrones como "2160p", "4k", etc.
+                if '2160' in format_note or '4k' in format_note:
+                    height = 2160
+                elif '1440' in format_note or '2k' in format_note:
+                    height = 1440
+                elif '1080' in format_note:
+                    height = 1080
+                elif '720' in format_note:
+                    height = 720
+                elif '480' in format_note:
+                    height = 480
+                elif '360' in format_note:
+                    height = 360
+                elif '240' in format_note:
+                    height = 240
+                elif '144' in format_note:
+                    height = 144
+            
+            if height and isinstance(height, (int, float)) and height > 0:
                 height = int(height)
+                # Incluir todos los formatos con altura, incluso si solo tienen video o solo audio
+                # porque en YouTube los formatos 4K suelen estar separados
                 if height not in seen_heights:
                     seen_heights.add(height)
                     ext = fmt.get('ext', 'unknown')
                     vcodec = fmt.get('vcodec', 'unknown')
                     acodec = fmt.get('acodec', 'none')
-                    has_video = vcodec != 'none' and vcodec != 'unknown'
-                    has_audio = acodec != 'none' and acodec != 'unknown'
+                    has_video = vcodec != 'none' and vcodec != 'unknown' and vcodec is not None
+                    has_audio = acodec != 'none' and acodec != 'unknown' and acodec is not None
                     
-                    processed_formats.append({
-                        'height': height,
-                        'ext': ext,
-                        'has_video': has_video,
-                        'has_audio': has_audio,
-                        'format_id': fmt.get('format_id', ''),
-                        'format_note': fmt.get('format_note', ''),
-                        'filesize': fmt.get('filesize'),
-                    })
+                    # Para formatos de video, incluir incluso si no tienen audio (se combinarán después)
+                    if has_video:
+                        processed_formats.append({
+                            'height': height,
+                            'ext': ext,
+                            'has_video': has_video,
+                            'has_audio': has_audio,
+                            'format_id': fmt.get('format_id', ''),
+                            'format_note': fmt.get('format_note', ''),
+                            'filesize': fmt.get('filesize'),
+                        })
         
         # Ordenar por altura descendente
         processed_formats.sort(key=lambda x: x['height'], reverse=True)
+        
+        # Debug: imprimir alturas detectadas para troubleshooting
+        if seen_heights:
+            print(f"Alturas detectadas: {sorted(seen_heights, reverse=True)}")
+            if 2160 in seen_heights:
+                print("✓ Formato 4K (2160p) detectado")
         
         # Agregar opciones especiales
         special_formats = [
@@ -705,7 +855,11 @@ def api_list_formats():
         # Agregar formatos de video disponibles
         video_formats = [f for f in processed_formats if f['has_video']]
         for fmt in video_formats:
-            label = f"{fmt['height']}p"
+            # Etiquetar 4K (2160p) específicamente
+            if fmt['height'] == 2160:
+                label = f"4K (2160p)"
+            else:
+                label = f"{fmt['height']}p"
             if fmt['ext']:
                 label += f" ({fmt['ext'].upper()})"
             special_formats.append({
@@ -714,10 +868,26 @@ def api_list_formats():
                 'height': fmt['height']
             })
         
+        # Extraer información de duración del video
+        video_duration = 0
+        duration_formatted = ""
+        if info:
+            video_duration = info.get('duration', 0)
+            if video_duration:
+                hours = int(video_duration // 3600)
+                minutes = int((video_duration % 3600) // 60)
+                seconds = int(video_duration % 60)
+                if hours > 0:
+                    duration_formatted = f"{hours}:{minutes:02d}:{seconds:02d}"
+                else:
+                    duration_formatted = f"{minutes}:{seconds:02d}"
+        
         return jsonify({
             'formats': special_formats,
             'available_heights': sorted(seen_heights, reverse=True),
-            'platform': detect_platform(url)
+            'platform': detect_platform(url),
+            'duration': video_duration,
+            'duration_formatted': duration_formatted
         })
         
     except Exception as e:
@@ -751,12 +921,36 @@ def api_download_start():
         data = request.get_json()
         url = (data.get("url") or "").strip()
         quality = (data.get("quality") or "best").strip()
+        start_time = data.get("start_time")  # Puede ser None o un número (segundos)
+        end_time = data.get("end_time")  # Puede ser None o un número (segundos)
         
         if not url:
             return jsonify({"error": "URL vacía"}), 400
         
         if not url.startswith("http"):
             return jsonify({"error": "URL inválida"}), 400
+        
+        # Validar tiempos si se proporcionan
+        if start_time is not None or end_time is not None:
+            # Convertir a float si son strings
+            try:
+                if start_time is not None:
+                    start_time = float(start_time)
+                if end_time is not None:
+                    end_time = float(end_time)
+            except (ValueError, TypeError):
+                return jsonify({"error": "Los tiempos deben ser números válidos"}), 400
+            
+            # Validar que ambos tiempos estén presentes si se especifica alguno
+            if (start_time is None) != (end_time is None):
+                return jsonify({"error": "Debes especificar tanto el tiempo de inicio como el de fin"}), 400
+            
+            # Validar que start_time < end_time
+            if start_time is not None and end_time is not None:
+                if start_time < 0:
+                    return jsonify({"error": "El tiempo de inicio no puede ser negativo"}), 400
+                if end_time <= start_time:
+                    return jsonify({"error": "El tiempo de fin debe ser mayor que el tiempo de inicio"}), 400
         
         # Generar task_id único
         task_id = str(uuid.uuid4())
@@ -769,7 +963,7 @@ def api_download_start():
         }
         
         # Iniciar descarga en un hilo separado
-        thread = threading.Thread(target=download_video_task, args=(task_id, url, quality))
+        thread = threading.Thread(target=download_video_task, args=(task_id, url, quality, start_time, end_time))
         thread.daemon = True
         thread.start()
         
@@ -853,5 +1047,5 @@ if __name__ == "__main__":
     logging.getLogger('werkzeug').setLevel(logging.ERROR)
     
     # Ejecuta: python app.py
-    app.run(host="127.0.0.1", port=5000, debug=True)
+    app.run(host="127.0.0.1", port=5001, debug=True)
 
